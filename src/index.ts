@@ -43,16 +43,44 @@ async function getFile(filepath: string): Promise<string> {
     return file;
 }
 
+function validateInput(npub: string, user: string): boolean
+{
+    
+    if(/^[a-zA-Z0-9]+$/.test(npub) == false || npub.length >= 70)
+    {
+        return false;
+    }
+    if(user.length >= 50)
+    {
+        return false;
+    }
+}
 
 app.get('/success/:id', (req, res) => {
-    var id = req.params.id;
-    res.writeHead(200, { "Content-Type": "text/html" });
-    getFile("/src/success.html").then((file) => {
-        
-        res.end(file.replace("$USER", "Ole"));
-    })
+    try {
+        var id: number = parseInt(req.params.id);
+        const db = new Database("database.db");
+        var data = (db.query(`SELECT * FROM users WHERE id=${id}`).get() as Dict<any>);
+        res.writeHead(200, { "Content-Type": "text/html" });
+        getFile("/src/success.html").then((file) => { 
+            res.end(file.replace("$USER", "Ole"));
+        })
+
+    } catch {
+        res.sendFile(ROOT_PATH + "/public/error.html");
+        return;
+    }
 })
 app.post('/submit', (req, res) => {
+    var username: string = req.body.username;
+    var npub: string = req.body.npub;
+    console.log(username);
+    console.log(npub);
+    if (validateInput(username, npub) == false)
+    {
+        res.sendFile(ROOT_PATH + "/public/error.html");
+        return;
+    }
     const db = new Database("database.db");
     var id: number = getlastid("database.db") + 1;
     db.run(`INSERT INTO users (id, user, npub) VALUES (?,?,?)`, [id, req.body.username, req.body.npub]);
