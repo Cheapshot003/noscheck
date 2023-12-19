@@ -5,6 +5,8 @@ import helmet from "helmet";
 const path = require('path');
 import { Database } from "bun:sqlite";
 const fs = require("fs");
+var crypto = require("crypto");
+
 
 function getlastid(db_name : string): number {
     var id: number;
@@ -54,7 +56,52 @@ function validateInput(npub: string, user: string): boolean
     {
         return false;
     }
+    return true;
 }
+
+app.get('/hashcash', (req, res) => {
+    const db = new Database("database.db");
+    var id: number = getlastid("database.db") + 1;
+    var randstr: string = crypto.randomBytes(25).toString('hex');
+    db.run(`INSERT INTO hashcash VALUES (?,?,?)`, [id, randstr, "0"]);
+    console.log(randstr);
+    db.close();
+    res.send(randstr);
+})
+
+function valHashcash(randstr: string, nonce: number): boolean
+{
+    
+    return false;
+}
+
+
+app.post('/submit', (req, res) => {
+    try {        
+        var username: string = req.body.username;
+        var npub: string = req.body.npub;
+        console.log(username);
+        console.log(npub);
+        if (validateInput(username, npub) == false)
+        {
+            res.sendFile(ROOT_PATH + "/public/error.html");
+            return;
+        }
+        const db = new Database("database.db");
+        var id: number = getlastid("database.db") + 1;
+
+        db.run(`INSERT INTO users (id, user, npub) VALUES (?,?,?)`, [id, req.body.username, req.body.npub]);
+        console.log(`PUSHED TO DB: ID: ${id}, USERNAME: ${req.body.username}, NPUB: ${req.body.npub}`);
+        res.redirect(`http://localhost:7000/success/${id}`);
+        db.close()
+    }
+    catch {
+        res.sendFile(ROOT_PATH + "/public/error.html");
+        return;
+    
+    }
+})
+
 
 app.get('/success/:id', (req, res) => {
     try {
@@ -71,23 +118,7 @@ app.get('/success/:id', (req, res) => {
         return;
     }
 })
-app.post('/submit', (req, res) => {
-    var username: string = req.body.username;
-    var npub: string = req.body.npub;
-    console.log(username);
-    console.log(npub);
-    if (validateInput(username, npub) == false)
-    {
-        res.sendFile(ROOT_PATH + "/public/error.html");
-        return;
-    }
-    const db = new Database("database.db");
-    var id: number = getlastid("database.db") + 1;
-    db.run(`INSERT INTO users (id, user, npub) VALUES (?,?,?)`, [id, req.body.username, req.body.npub]);
-    console.log(`PUSHED TO DB: ID: ${id}, USERNAME: ${req.body.username}, NPUB: ${req.body.npub}`);
-    res.redirect(`http://localhost:7000/success/${id}`);
-    db.close()
-})
+
 app.listen(PORT, () => {
     console.log(`Listening on port ${PORT}`)
 })
