@@ -8,12 +8,21 @@ const fs = require("fs");
 var crypto = require("crypto");
 
 
-function getlastid(db_name : string): number {
+function getnewid(): string
+{
+    var randstr: string = crypto.randomBytes(25).toString('hex');
+    return randstr;
+}
+
+
+function getlastid(db_name : string, table_name: string): number {
     var id: number;
 
     const db = new Database(db_name);
-    var query = db.query(`SELECT id FROM users`);
+    var query = db.query(`SELECT id FROM ${table_name}`);
+    console.log(query);
     var id1 = query.all().at(-1);
+    console.log(id1);
     id1 = (id1 as Dict<any>).id;
     
     return parseInt(id1 as string);
@@ -61,11 +70,13 @@ function validateInput(npub: string, user: string): boolean
 
 app.get('/hashcash', (req, res) => {
     const db = new Database("database.db");
-    var id: number = getlastid("database.db") + 1;
+    var id: string = getnewid();
+    console.log(id);
     var randstr: string = crypto.randomBytes(25).toString('hex');
-    db.run(`INSERT INTO hashcash VALUES (?,?,?)`, [id, randstr, "0"]);
+    db.run(`INSERT INTO hashcash VALUES (?,?,?)`, [id.toString(), randstr, "0"]);
     console.log(randstr);
     db.close();
+    res.writeHead(200);
     res.send(randstr);
 })
 
@@ -88,14 +99,15 @@ app.post('/submit', (req, res) => {
             return;
         }
         const db = new Database("database.db");
-        var id: number = getlastid("database.db") + 1;
+        var id: string = getnewid();
 
         db.run(`INSERT INTO users (id, user, npub) VALUES (?,?,?)`, [id, req.body.username, req.body.npub]);
         console.log(`PUSHED TO DB: ID: ${id}, USERNAME: ${req.body.username}, NPUB: ${req.body.npub}`);
         res.redirect(`http://localhost:7000/success/${id}`);
         db.close()
     }
-    catch {
+    catch (e) {
+        console.log(e);
         res.sendFile(ROOT_PATH + "/public/error.html");
         return;
     
@@ -105,15 +117,18 @@ app.post('/submit', (req, res) => {
 
 app.get('/success/:id', (req, res) => {
     try {
-        var id: number = parseInt(req.params.id);
+        var id: string = req.params.id;
         const db = new Database("database.db");
-        var data = (db.query(`SELECT * FROM users WHERE id=${id}`).get() as Dict<any>);
+        var data = (db.query(`SELECT * FROM users WHERE id='${id}'`).get() as Dict<any>);
+        var user: string = data["user"];
+        console.log(data);
         res.writeHead(200, { "Content-Type": "text/html" });
         getFile("/src/success.html").then((file) => { 
-            res.end(file.replace("$USER", "Ole"));
+            res.end(file.replace("$USER", user));
         })
 
-    } catch {
+    } catch (e) {
+        console.log(e);
         res.sendFile(ROOT_PATH + "/public/error.html");
         return;
     }

@@ -1,4 +1,3 @@
-console.log("TEST");
 hash("TEST").then((hash1) => {
     console.log(hash1);
 })
@@ -16,6 +15,10 @@ function hash(string) {
 }
 
 
-function hashcash(randstr) {
-
+async function hashcash() {
+   const randstr = await fetch('http://localhost:7000/hashcash');
+   var data  = await randstr.text();
+   console.log(data);
 }
+
+hashcash();
